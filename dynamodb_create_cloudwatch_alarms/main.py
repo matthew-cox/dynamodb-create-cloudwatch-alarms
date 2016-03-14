@@ -178,9 +178,10 @@ def get_ddb_alarms_to_create(ddb_tables, aws_cw_connect):
                         u'TableName': table[0],
                         u'GlobalSecondaryIndexName': table[3]}
             else:
-                alarm_name = u'{0}-{1}-BasicAlarm'.format(
+                alarm_name = u'{0}-{1}-BasicAlarm-{2}'.format(
                         table[0],
-                        metric.replace('Consumed', '') + 'Limit')
+                        metric.replace('Consumed', '') + 'Limit',
+                        (ALERT_PERCENTAGE * 100))
                 alarm_dimensions = {u'TableName': table[0]}
 
             ddb_table_alarm = MetricAlarm(
