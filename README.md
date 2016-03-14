@@ -19,6 +19,7 @@ Usage:
     dynamodb-create-cloudwatch-alarms [-h | --help]
 
 Options:
+     -a <alert_percent>    At what percentage of usage to alert [default: 0.8]
      -s <sns_topic_arn>    For sending alarm ( require )
      -r <region>           AWS region
      -p <prefix>           DynamoDB name prefix
