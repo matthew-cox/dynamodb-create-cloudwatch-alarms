@@ -12,6 +12,7 @@ Usage:
     dynamodb-create-cloudwatch-alarms [-h | --help]
 
 Options:
+     -a <alert_percent>    At what percentage of usage to alert [default: 0.8]
      -s <sns_topic_arn>    For sending alarm ( require )
      -r <region>           AWS region
      -p <prefix>           DynamoDB name prefix
@@ -20,11 +21,12 @@ Options:
 """
 import boto
 import boto.ec2
+from boto.ec2.cloudwatch import MetricAlarm
 import boto.dynamodb2
 from docopt import docopt
-from boto.ec2.cloudwatch import MetricAlarm
 
 DEBUG = False
+ALERT_PERCENTAGE = 0.8
 AWS_REGION = u'ap-northeast-1'
 AWS_SNS_ARN = u''
 DYNAMO_PREF = u''
@@ -33,7 +35,6 @@ DDB_METRICS = frozenset([u'ConsumedReadCapacityUnits',
                          u'ConsumedWriteCapacityUnits'])
 ALARM_PERIOD = 300
 ALARM_EVALUATION_PERIOD = 6
-RATE = 0.8
 
 
 def _get_ddb_tables_list(ddb_connection):
@@ -186,7 +187,7 @@ def get_ddb_alarms_to_create(ddb_tables, aws_cw_connect):
                 namespace=u'AWS/DynamoDB',
                 metric=u'{0}'.format(metric), statistic='Sum',
                 comparison=u'>=',
-                threshold=RATE*threshold*ALARM_PERIOD,
+                threshold=ALERT_PERCENTAGE*threshold*ALARM_PERIOD,
                 period=ALARM_PERIOD,
                 evaluation_periods=ALARM_EVALUATION_PERIOD,
                 # Below insert the actions appropriate.
@@ -214,9 +215,13 @@ def main():
     args = docopt(__doc__)
 
     global DEBUG
+    global ALERT_PERCENTAGE
     global AWS_REGION
     global AWS_SNS_ARN
     global DYNAMO_PREF
+
+    if args['-a']:
+        ALERT_PERCENTAGE = args['-a']
 
     AWS_SNS_ARN = args['-s']
 
