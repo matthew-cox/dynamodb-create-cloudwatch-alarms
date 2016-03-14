@@ -170,9 +170,10 @@ def get_ddb_alarms_to_create(ddb_tables, aws_cw_connect):
             # for the threshold we calculate the 80 percent
             # from the tables ProvisionedThroughput values
             if len(table) > 3:
-                alarm_name = u'{0}-{1}-BasicAlarm'.format(
+                alarm_name = u'{0}-{1}-BasicAlarm-{2}'.format(
                         table[0] + u'-' + table[3],
-                        metric.replace('Consumed', '') + 'Limit')
+                        metric.replace('Consumed', '') + 'Limit',
+                        (ALERT_PERCENTAGE * 100))
                 alarm_dimensions = {
                         u'TableName': table[0],
                         u'GlobalSecondaryIndexName': table[3]}
