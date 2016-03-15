@@ -46,12 +46,12 @@ def _get_ddb_tables_list(ddb_connection):
     """
 
     ddb_tables_list_all = []
-    ddb_tables_list = {}
     ddb_tables_list = ddb_connection.list_tables()
 
     while u'LastEvaluatedTableName' in ddb_tables_list:
+        try:
         # Boto DynamoDB v2 adds this extra layer
-        if ddb_tables_list[u'TableNames']:
+        if u'TableNames' in ddb_tables_list and ddb_tables_list[u'TableNames']:
             ddb_tables_list_all.extend(ddb_tables_list[u'TableNames'])
         # Boto DynamoDB v1 does not
         else:
@@ -62,11 +62,11 @@ def _get_ddb_tables_list(ddb_connection):
     # pylint: disable=useless-else-on-loop
     else:
         # Boto DynamoDB v2 adds this extra layer
-        if ddb_tables_list[u'TableNames']:
+        if u'TableNames' in ddb_tables_list and ddb_tables_list[u'TableNames']:
             ddb_tables_list_all.extend(ddb_tables_list[u'TableNames'])
         # Boto DynamoDB v1 does not
         else:
-            ddb_tables_list_all.extend(ddb_tables_list.keys())
+            ddb_tables_list_all.extend(ddb_tables_list)
 
     return ddb_tables_list_all
 
