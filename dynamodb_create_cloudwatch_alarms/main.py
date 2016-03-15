@@ -27,7 +27,7 @@ from docopt import docopt
 
 DEBUG = False
 ALERT_PERCENTAGE = 0.8
-AWS_REGION = u'ap-northeast-1'
+AWS_REGION = None
 AWS_SNS_ARN = u''
 DYNAMO_PREF = u''
 
@@ -46,15 +46,22 @@ def _get_ddb_tables_list(ddb_connection):
     """
 
     ddb_tables_list_all = []
-
     ddb_tables_list = ddb_connection.list_tables()
+
     while u'LastEvaluatedTableName' in ddb_tables_list:
-        ddb_tables_list_all.extend(ddb_tables_list[u'TableNames'])
+        if ddb_tables_list[u'TableNames']:
+            ddb_tables_list_all.extend(ddb_tables_list[u'TableNames'])
+        else:
+            ddb_tables_list_all.extend(ddb_tables_list)
         ddb_tables_list = ddb_connection.list_tables(
-                exclusive_start_table_name=ddb_tables_list
-                [u'LastEvaluatedTableName'])
+            exclusive_start_table_name=ddb_tables_list
+            [u'LastEvaluatedTableName'])
+    # pylint: disable=useless-else-on-loop
     else:
-        ddb_tables_list_all.extend(ddb_tables_list[u'TableNames'])
+        if ddb_tables_list[u'TableNames']:
+            ddb_tables_list_all.extend(ddb_tables_list[u'TableNames'])
+        else:
+            ddb_tables_list_all.extend(ddb_tables_list)
 
     return ddb_tables_list_all
 
@@ -67,7 +74,13 @@ def get_ddb_tables():
         (set) Of valid DynamoDB table describe list
     """
 
-    ddb_connection = boto.dynamodb2.connect_to_region(AWS_REGION)
+    if AWS_REGION:
+        if DEBUG:
+            print "DynamoDB connecting to region: '{}'...".format(AWS_REGION)
+        ddb_connection = boto.dynamodb2.connect_to_region(AWS_REGION)
+    else:
+        ddb_connection = boto.connect_dynamodb()
+
     ddb_tables_list = _get_ddb_tables_list(ddb_connection)
 
     ddb_tables = set()
@@ -132,8 +145,8 @@ def get_existing_alarm_names(aws_cw_connect):
     for existing_alarm in existing_alarms:
         if existing_alarm.namespace == u'AWS/DynamoDB':
             existing_alarm_names.update({existing_alarm.name: {
-                     u'threshold': existing_alarm.threshold,
-                     u'alarm_actions': existing_alarm.alarm_actions}})
+                u'threshold': existing_alarm.threshold,
+                u'alarm_actions': existing_alarm.alarm_actions}})
 
     return existing_alarm_names
 
@@ -158,8 +171,10 @@ def get_ddb_alarms_to_create(ddb_tables, aws_cw_connect):
     alarms_to_create = set()
     alarms_to_update = set()
     existing_alarms = get_existing_alarm_names(aws_cw_connect)
+    nice_alert_string = int(float(ALERT_PERCENTAGE) * 100)
 
     for table in ddb_tables:
+        print "Table name: '{}'".format(table[0])
         # we want two alarms per DynamoDB table
         for metric in DDB_METRICS:
             if metric == u'ConsumedReadCapacityUnits':
@@ -171,25 +186,28 @@ def get_ddb_alarms_to_create(ddb_tables, aws_cw_connect):
             # from the tables ProvisionedThroughput values
             if len(table) > 3:
                 alarm_name = u'{0}-{1}-BasicAlarm-{2}'.format(
-                        table[0] + u'-' + table[3],
-                        metric.replace('Consumed', '') + 'Limit',
-                        (ALERT_PERCENTAGE * 100))
+                    table[0] + u'-' + table[3],
+                    metric.replace('Consumed', '') + 'Limit',
+                    nice_alert_string)
+
                 alarm_dimensions = {
-                        u'TableName': table[0],
-                        u'GlobalSecondaryIndexName': table[3]}
+                    u'TableName': table[0],
+                    u'GlobalSecondaryIndexName': table[3]}
             else:
                 alarm_name = u'{0}-{1}-BasicAlarm-{2}'.format(
-                        table[0],
-                        metric.replace('Consumed', '') + 'Limit',
-                        (ALERT_PERCENTAGE * 100))
+                    table[0],
+                    metric.replace('Consumed', '') + 'Limit',
+                    nice_alert_string)
                 alarm_dimensions = {u'TableName': table[0]}
+
+            print "Alarm Name: '{}'".format(alarm_name)
 
             ddb_table_alarm = MetricAlarm(
                 name=alarm_name,
                 namespace=u'AWS/DynamoDB',
                 metric=u'{0}'.format(metric), statistic='Sum',
                 comparison=u'>=',
-                threshold=ALERT_PERCENTAGE*threshold*ALARM_PERIOD,
+                threshold=float(ALERT_PERCENTAGE)*threshold*ALARM_PERIOD,
                 period=ALARM_PERIOD,
                 evaluation_periods=ALARM_EVALUATION_PERIOD,
                 # Below insert the actions appropriate.
@@ -212,10 +230,13 @@ def get_ddb_alarms_to_create(ddb_tables, aws_cw_connect):
 
     return (alarms_to_create, alarms_to_update)
 
-
+# pylint: disable=too-many-branches
 def main():
+    """
+    main() - Do all the things
+    """
     args = docopt(__doc__)
-
+    # pylint: disable=global-statement
     global DEBUG
     global ALERT_PERCENTAGE
     global AWS_REGION
@@ -223,7 +244,8 @@ def main():
     global DYNAMO_PREF
 
     if args['-a']:
-        ALERT_PERCENTAGE = args['-a']
+        # make sure we get a float
+        ALERT_PERCENTAGE = float(args['-a'])
 
     AWS_SNS_ARN = args['-s']
 
@@ -237,7 +259,12 @@ def main():
         DYNAMO_PREF = args['-p']
 
     ddb_tables = get_ddb_tables()
-    aws_cw_connect = boto.ec2.cloudwatch.connect_to_region(AWS_REGION)
+
+    if AWS_REGION:
+        print "CloudWatch connecting to region: '{}'...".format(AWS_REGION)
+        aws_cw_connect = boto.ec2.cloudwatch.connect_to_region(AWS_REGION)
+    else:
+        aws_cw_connect = boto.connect_cloudwatch()
 
     (alarms_to_create,
      alarms_to_update) = get_ddb_alarms_to_create(ddb_tables,
