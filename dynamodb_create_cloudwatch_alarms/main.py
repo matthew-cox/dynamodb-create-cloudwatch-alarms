@@ -46,6 +46,7 @@ def _get_ddb_tables_list(ddb_connection):
     """
 
     ddb_tables_list_all = []
+    ddb_tables_list = {}
     ddb_tables_list = ddb_connection.list_tables()
 
     while u'LastEvaluatedTableName' in ddb_tables_list:
@@ -65,7 +66,7 @@ def _get_ddb_tables_list(ddb_connection):
             ddb_tables_list_all.extend(ddb_tables_list[u'TableNames'])
         # Boto DynamoDB v1 does not
         else:
-            ddb_tables_list_all.extend(ddb_tables_list)
+            ddb_tables_list_all.extend(ddb_tables_list.keys())
 
     return ddb_tables_list_all
 
