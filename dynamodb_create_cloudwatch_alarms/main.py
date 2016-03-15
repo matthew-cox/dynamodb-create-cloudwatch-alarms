@@ -13,9 +13,11 @@ Usage:
 
 Options:
      -a <alert_percent>    At what percentage of usage to alert [default: 0.8]
+     -f <num_failures>     After how many failures to alert [default: 6]
      -s <sns_topic_arn>    For sending alarm ( require )
      -r <region>           AWS region
-     -p <prefix>           DynamoDB name prefix
+     -p <prefix>           DynamoDB table name prefix
+     -t <sample_seconds>   How long in seconds are the sample periods? [default: 300]
      --debug               Don't send data to AWS
 
 """
@@ -158,6 +160,7 @@ def get_existing_alarm_names(aws_cw_connect):
     return existing_alarm_names
 
 
+# pylint: disable=too-many-branches
 def get_ddb_alarms_to_create(ddb_tables, aws_cw_connect):
     """
     Creates a Read/Write Capacity Units alarm
@@ -248,6 +251,8 @@ def main():
     # pylint: disable=global-statement
     global DEBUG
     global ALERT_PERCENTAGE
+    global ALARM_EVALUATION_PERIOD
+    global ALARM_PERIOD
     global AWS_REGION
     global AWS_SNS_ARN
     global DYNAMO_PREF
@@ -261,11 +266,19 @@ def main():
     if args['--debug']:
         DEBUG = True
 
+    if args['-f']:
+        # make sure we get an int
+        ALARM_EVALUATION_PERIOD = int(args['-f'])
+
     if args['-r']:
         AWS_REGION = args['-r']
 
     if args['-p']:
         DYNAMO_PREF = args['-p']
+
+    if args['-t']:
+        # make sure we get an int
+        ALARM_PERIOD = int(args['-t'])
 
     ddb_tables = get_ddb_tables()
 
