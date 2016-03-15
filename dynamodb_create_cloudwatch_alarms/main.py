@@ -181,7 +181,8 @@ def get_ddb_alarms_to_create(ddb_tables, aws_cw_connect):
     nice_alert_string = int(float(ALERT_PERCENTAGE) * 100)
 
     for table in ddb_tables:
-        print "Table name: '{}'".format(table[0])
+        if DEBUG:
+            print "Table name: '{}'".format(table[0])
         # we want two alarms per DynamoDB table
         for metric in DDB_METRICS:
             if metric == u'ConsumedReadCapacityUnits':
@@ -207,7 +208,8 @@ def get_ddb_alarms_to_create(ddb_tables, aws_cw_connect):
                     nice_alert_string)
                 alarm_dimensions = {u'TableName': table[0]}
 
-            print "Alarm Name: '{}'".format(alarm_name)
+            if DEBUG:
+                print "Alarm Name: '{}'".format(alarm_name)
 
             ddb_table_alarm = MetricAlarm(
                 name=alarm_name,
@@ -268,7 +270,8 @@ def main():
     ddb_tables = get_ddb_tables()
 
     if AWS_REGION:
-        print "CloudWatch connecting to region: '{}'...".format(AWS_REGION)
+        if DEBUG:
+            print "CloudWatch connecting to region: '{}'...".format(AWS_REGION)
         aws_cw_connect = boto.ec2.cloudwatch.connect_to_region(AWS_REGION)
     else:
         aws_cw_connect = boto.connect_cloudwatch()
