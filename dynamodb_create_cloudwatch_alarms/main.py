@@ -49,8 +49,10 @@ def _get_ddb_tables_list(ddb_connection):
     ddb_tables_list = ddb_connection.list_tables()
 
     while u'LastEvaluatedTableName' in ddb_tables_list:
+        # Boto DynamoDB v2 adds this extra layer
         if ddb_tables_list[u'TableNames']:
             ddb_tables_list_all.extend(ddb_tables_list[u'TableNames'])
+        # Boto DynamoDB v1 does not
         else:
             ddb_tables_list_all.extend(ddb_tables_list)
         ddb_tables_list = ddb_connection.list_tables(
@@ -58,8 +60,10 @@ def _get_ddb_tables_list(ddb_connection):
             [u'LastEvaluatedTableName'])
     # pylint: disable=useless-else-on-loop
     else:
+        # Boto DynamoDB v2 adds this extra layer
         if ddb_tables_list[u'TableNames']:
             ddb_tables_list_all.extend(ddb_tables_list[u'TableNames'])
+        # Boto DynamoDB v1 does not
         else:
             ddb_tables_list_all.extend(ddb_tables_list)
 
@@ -77,8 +81,11 @@ def get_ddb_tables():
     if AWS_REGION:
         if DEBUG:
             print "DynamoDB connecting to region: '{}'...".format(AWS_REGION)
+        # This is v2. I could force it to v1, but I do not want to undo the
+        # other work that was done
         ddb_connection = boto.dynamodb2.connect_to_region(AWS_REGION)
     else:
+        # This is Boto DynamoDb v1 (for unknown and unfortunate reasons)
         ddb_connection = boto.connect_dynamodb()
 
     ddb_tables_list = _get_ddb_tables_list(ddb_connection)
